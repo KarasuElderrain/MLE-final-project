@@ -1,6 +1,7 @@
 import os
 import pickle
 import random
+from .module import ols_model
 
 import numpy as np
 
@@ -24,8 +25,7 @@ def setup(self):
     """
     if self.train or not os.path.isfile("my-saved-model.pt"):
         self.logger.info("Setting up model from scratch.")
-        weights = np.random.rand(len(ACTIONS))
-        self.model = weights / weights.sum()
+        self.model = ols_model()
     else:
         self.logger.info("Loading model from saved state.")
         with open("my-saved-model.pt", "rb") as file:
@@ -41,18 +41,20 @@ def act(self, game_state: dict) -> str:
     :param game_state: The dictionary that describes everything on the board.
     :return: The action to take as a string.
     """
+
+
     # todo Exploration vs exploitation
     random_prob = .1
     if self.train and random.random() < random_prob:
         self.logger.debug("Choosing action purely at random.")
         # 80%: walk in any direction. 10% wait. 10% bomb.
-        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .1, .1])
+        return np.random.choice(ACTIONS, p=[.2, .2, .2, .2, .2, .0])
 
     self.logger.debug("Querying model for action.")
-    return np.random.choice(ACTIONS, p=self.model)
+    return self.model.choose_action(state_to_features(self,game_state))
 
 
-def state_to_features(game_state: dict) -> np.array:
+def state_to_features(self,game_state: dict) -> np.array:
     """
     *This is not a required function, but an idea to structure your code.*
 
@@ -70,6 +72,19 @@ def state_to_features(game_state: dict) -> np.array:
     if game_state is None:
         return None
 
+    # Split orginal dict for better readability
+    field = game_state['field']
+    coin_list = np.array(game_state['coins'])
+    name, score, bomb_avalibal, (x_coord, y_coord) = game_state['self']
+
+    for cx, cy in coin_list:
+        field[cx, cy] = 2
+    
+    field[x_coord, y_coord] = 5
+    self.logger.debug("Return feature arre of shape {}".format(field.shape))
+    return field.reshape(-1)
+
+    '''
     # For example, you could construct several channels of equal shape, ...
     channels = []
     channels.append(...)
@@ -77,3 +92,5 @@ def state_to_features(game_state: dict) -> np.array:
     stacked_channels = np.stack(channels)
     # and return them as a vector
     return stacked_channels.reshape(-1)
+    '''
+

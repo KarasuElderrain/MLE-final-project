@@ -51,11 +51,12 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
     # Idea: Add your own events to hand out rewards
-    if ...:
+    if False:
         events.append(PLACEHOLDER_EVENT)
 
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
+    self.transitions.append(Transition(state_to_features(self,old_game_state), self_action, state_to_features(self, new_game_state), reward_from_events(self, events)))
+    self.model.add_to_TS(Transition(state_to_features(self, old_game_state), self_action, state_to_features(self,new_game_state), reward_from_events(self, events)))
 
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
@@ -72,7 +73,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
+    self.transitions.append(Transition(state_to_features(self, last_game_state), last_action, None, reward_from_events(self, events)))
+    self.model.add_to_TS(Transition(state_to_features(self, last_game_state), last_action, None, reward_from_events(self, events)))
+    self.logger.debug('Start training with ts states of shape {}'.format(self.model.old_state.shape))
+    self.model.train()
 
     # Store the model
     with open("my-saved-model.pt", "wb") as file:
@@ -87,8 +91,14 @@ def reward_from_events(self, events: List[str]) -> int:
     certain behavior.
     """
     game_rewards = {
-        e.COIN_COLLECTED: 1,
-        e.KILLED_OPPONENT: 5,
+        e.COIN_COLLECTED: 5,
+        e.KILLED_OPPONENT: 10,
+        e.MOVED_DOWN: 1,
+        e.MOVED_LEFT: 1,
+        e.MOVED_RIGHT: 1,
+        e.MOVED_UP: 1,
+        e.INVALID_ACTION: -1,
+        e.WAITED: -1,
         PLACEHOLDER_EVENT: -.1  # idea: the custom event is bad
     }
     reward_sum = 0
